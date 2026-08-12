@@ -1,0 +1,158 @@
+---
+/**
+ * FounderPulse — signature module for The Business Ledger.
+ *
+ * A horizontal "vitals strip" styled like a trading terminal / P&L summary:
+ * each cell shows one ledger stat (total entries, accounts, top account,
+ * avg reading time). Tabular-num mono figures, thin column-rule separators,
+ * a blinking cursor on the "live" figure. Unique to this blog.
+ */
+import { getCategoriesWithCounts, getPublishedPosts, readingTimeFor } from '~/lib/blog'
+
+const posts = await getPublishedPosts()
+const cats = await getCategoriesWithCounts()
+
+const totalEntries = posts.length
+const totalAccounts = cats.length
+const topAccount = cats[0]?.category ?? '—'
+const topCount = cats[0]?.count ?? 0
+
+// Average reading time in minutes (raw number, not "X min read")
+let avgMins = 5
+if (posts.length > 0) {
+  const sum = posts.reduce((acc, p) => {
+    const rt = p.data.readingTime ?? readingTimeFor(p)
+    const m = typeof rt === 'string' ? Number.parseFloat(rt) : rt
+    return acc + (Number.isFinite(m) ? m : 5)
+  }, 0)
+  avgMins = Math.round(sum / posts.length)
+}
+
+const now = new Date()
+const fy = now.getFullYear()
+const qtr = `Q${Math.ceil((now.getMonth() + 1) / 3)}`
+---
+
+<aside class="founder-pulse" aria-label="Ledger vitals">
+  <div class="fp-inner">
+    <div class="fp-cell">
+      <span class="fp-label mono">Entries</span>
+      <span class="fp-value mono fp-live">{totalEntries.toString().padStart(3, '0')}<span class="fp-cursor" aria-hidden="true">_</span></span>
+    </div>
+    <div class="fp-sep" aria-hidden="true"></div>
+    <div class="fp-cell">
+      <span class="fp-label mono">Accounts</span>
+      <span class="fp-value mono">{totalAccounts.toString().padStart(2, '0')}</span>
+    </div>
+    <div class="fp-sep" aria-hidden="true"></div>
+    <div class="fp-cell fp-cell--wide">
+      <span class="fp-label mono">Top account</span>
+      <span class="fp-value fp-value--text">{topAccount}<span class="fp-ct mono">{topCount}</span></span>
+    </div>
+    <div class="fp-sep" aria-hidden="true"></div>
+    <div class="fp-cell">
+      <span class="fp-label mono">Avg read</span>
+      <span class="fp-value mono">{avgMins}&thinsp;min</span>
+    </div>
+    <div class="fp-sep fp-sep--right-flush" aria-hidden="true"></div>
+    <div class="fp-cell fp-cell--period">
+      <span class="fp-label mono">Period</span>
+      <span class="fp-value mono">FY{fy} {qtr}</span>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .founder-pulse {
+    margin-block: 2rem 0;
+    background: var(--paper-2);
+    border-top: 3px solid var(--ink);
+    border-bottom: 1px solid var(--rule-strong, var(--rule));
+    overflow-x: auto;
+  }
+  .fp-inner {
+    max-width: 1080px;
+    margin-inline: auto;
+    padding-inline: clamp(1rem, 4vw, 2rem);
+    display: flex;
+    align-items: stretch;
+    min-height: 56px;
+  }
+  .fp-cell {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 0.625rem 1.25rem 0.625rem 0;
+    white-space: nowrap;
+  }
+  .fp-cell:first-child { padding-left: 0; }
+  .fp-cell--wide { flex: 1; min-width: 0; }
+  .fp-cell--period { padding-left: 1.25rem; margin-left: auto; }
+
+  .fp-sep {
+    width: 1px;
+    background: var(--rule-strong, var(--rule));
+    margin-block: 0.75rem;
+    flex: 0 0 auto;
+    margin-inline: 1.25rem 0;
+  }
+  .fp-sep--right-flush { margin-inline: auto 0; }
+
+  .fp-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: block;
+  }
+  .fp-value {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+  }
+  .fp-value--text {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 22ch;
+  }
+  .fp-ct {
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+
+  /* blinking cursor on the live entry count */
+  .fp-live { color: var(--accent); }
+  .fp-cursor {
+    display: inline-block;
+    animation: fp-blink 1.1s step-start infinite;
+    color: var(--accent);
+    font-size: 14px;
+  }
+  @keyframes fp-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fp-cursor { animation: none; }
+  }
+
+  @media (max-width: 479px) {
+    .fp-cell--period { display: none; }
+    .fp-sep--right-flush { display: none; }
+    .fp-cell { padding-right: 0.875rem; }
+    .fp-sep { margin-inline: 0.875rem 0; }
+  }
+</style>
