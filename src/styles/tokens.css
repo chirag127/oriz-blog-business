@@ -1,0 +1,236 @@
+/*
+ * tokens.css — oriz-blog-business "The Ledger" identity (2026-08-12).
+ *
+ * Deliberately DISTINCT from oriz-blog ("Signal Press": dark near-black +
+ * amber + Source Serif 4 newspaper) and from the sister oriz.in apps (indigo
+ * Stripe/Linear). This site renders double-entry bookkeeping as a design
+ * system for founders + freelancers:
+ *
+ *   Warm manila ledger-paper (LIGHT-first) · deep ink-brown text · pine
+ *   "credit" green accent · ledger-red "debit" marker · IBM Plex Mono tabular
+ *   figures for every date/amount.
+ *
+ * Every --color-* / --brand / --accent name is kept as an alias so the shared
+ * chrome/legal/Footer components (which read the shell token names) compile
+ * unchanged. Theme modes:
+ *   :root                              → light manila (default)
+ *   @media (prefers-color-scheme:dark) → dark ledger, UNLESS [data-theme="light"]
+ *   [data-theme="dark"]                → dark, always
+ *   [data-theme="sepia"]               → warmer paper variant
+ *   [data-theme="hc"]                  → pure black/white high contrast
+ */
+:root {
+  color-scheme: light;
+
+  /* ── LIGHT manila-ledger palette (default) ─────────────────────────────
+     Warm accounting-paper surface, deep ink-brown text, a deep pine "credit"
+     green as the primary accent, and a ledger red reserved for the "debit"
+     posting marker. Not corporate blue, not acid green, not cream+terracotta. */
+  --brand: #0f5c3f; /* pine credit-green — links, active, primary */
+  --brand-soft: #e2ebe4; /* pale green tint — hover, chips (light) */
+  --success: #0f5c3f;
+  --danger-color: #a13a2a; /* ledger-red debit marker */
+
+  --paper: #f4f1ea; /* warm manila ledger paper (page bg) */
+  --paper-2: #ebe6da; /* ruled panel / elevated surface */
+  --surface: var(--paper-2);
+  --ink: #16130d; /* deep ink-brown text */
+  --ink-mute: #6b6559; /* secondary */
+  --rule: #d8d2c4; /* hairline ruled-line */
+  --rule-strong: #b7ae9b; /* heavier column rule */
+
+  /* canonical accent — pine green. Everything routes through --accent.
+     --cobalt kept ONLY as a back-compat alias → --accent. */
+  --accent: var(--brand);
+  --accent-soft: var(--brand-soft);
+  --cobalt: var(--accent);
+  --brand-tint: var(--brand-soft);
+  --sage: var(--success);
+  --vermilion: var(--danger-color);
+  --highlighter: var(--brand);
+
+  /* ledger posting-mark colours per vertical (thin ticks only, never bg).
+     Founder desks: Startups · Money · Freelance · Growth · Notes. */
+  --v-dev: #0f5c3f; /* startups → credit green */
+  --v-finance: #8a5a0b; /* money → deep gold */
+  --v-culture: #7a3ea1; /* freelance → indigo-violet */
+  --v-health: #1f6f8b; /* growth → deep teal */
+  --v-personal: #6b6559; /* notes → mute */
+
+  /* semantic passthroughs */
+  --color-bg: var(--paper);
+  --color-fg: var(--ink);
+  --color-accent: var(--brand);
+  --color-accent-fg: #f4f1ea;
+  --color-sage: var(--success);
+  --color-muted: var(--ink-mute);
+  --color-border: var(--rule);
+  --color-bg-soft: var(--paper-2);
+  --color-bg-muted: var(--paper-2);
+  --color-prose: var(--ink);
+  --color-fg-muted: var(--ink-mute);
+  --color-fg-soft: var(--ink-mute);
+
+  /* color alias layer (chrome components read these) */
+  --color-brand-indigo: var(--brand); /* name kept for compatibility */
+  --color-brand-indigo-soft: var(--brand-soft);
+  --color-brand-success: var(--success);
+  --color-brand-danger: var(--danger-color);
+  --color-neutral-0: #f4f1ea;
+  --color-neutral-50: #ebe6da;
+  --color-neutral-100: #e2dccd;
+  --color-neutral-200: #d8d2c4;
+  --color-neutral-300: #b7ae9b;
+  --color-neutral-500: #6b6559;
+  --color-neutral-700: #3a352b;
+  --color-neutral-900: #16130d;
+  --color-neutral-1000: #000000;
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-mute: var(--ink-mute);
+  --color-rule: var(--rule);
+
+  /* ── type — families declared once in global.css @theme ──────────────── */
+
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 17px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 48px;
+
+  /* spacing — 8 steps */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* motion — 3 durations + 3 easings */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 360ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* breakpoints */
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1440px;
+
+  /* radii + containers — ledgers are square; radius stays near-0 */
+  --radius-card: 2px;
+  --radius-button: 2px;
+  --container-page: 1100px;
+}
+
+/* ── DARK — system preference, unless user forced light ─────────────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --brand: #3fbf87; /* brightened pine for dark */
+    --brand-soft: #123024;
+    --success: #3fbf87;
+    --danger-color: #e08a76;
+    --paper: #12100b; /* dark ledger ink surface */
+    --paper-2: #1b1811;
+    --ink: #ece7db; /* warm paper text */
+    --ink-mute: #9a917f;
+    --rule: #2c2820;
+    --rule-strong: #423c2f;
+    --v-dev: #3fbf87;
+    --v-finance: #d8a24a;
+    --v-culture: #c79bec;
+    --v-health: #5fb8d1;
+    --v-personal: #9a917f;
+    --color-accent-fg: #12100b;
+    --color-neutral-0: #12100b;
+    --color-neutral-50: #1b1811;
+    --color-neutral-100: #232016;
+    --color-neutral-200: #2c2820;
+    --color-neutral-300: #423c2f;
+    --color-neutral-500: #9a917f;
+    --color-neutral-700: #cdc6b6;
+    --color-neutral-900: #ece7db;
+  }
+}
+
+/* ── DARK — explicit user override, wins over system ────────────────── */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --brand: #3fbf87;
+  --brand-soft: #123024;
+  --success: #3fbf87;
+  --danger-color: #e08a76;
+  --paper: #12100b;
+  --paper-2: #1b1811;
+  --ink: #ece7db;
+  --ink-mute: #9a917f;
+  --rule: #2c2820;
+  --rule-strong: #423c2f;
+  --v-dev: #3fbf87;
+  --v-finance: #d8a24a;
+  --v-culture: #c79bec;
+  --v-health: #5fb8d1;
+  --v-personal: #9a917f;
+  --color-accent-fg: #12100b;
+  --color-neutral-0: #12100b;
+  --color-neutral-50: #1b1811;
+  --color-neutral-100: #232016;
+  --color-neutral-200: #2c2820;
+  --color-neutral-300: #423c2f;
+  --color-neutral-500: #9a917f;
+  --color-neutral-700: #cdc6b6;
+  --color-neutral-900: #ece7db;
+}
+
+/* ── SEPIA — warmer manila paper, brown-gold accent ─────────────────── */
+:root[data-theme='sepia'] {
+  color-scheme: light;
+  --brand: #0d5138;
+  --brand-soft: #e6ddc8;
+  --paper: #efe6d0;
+  --paper-2: #e7dcc2;
+  --ink: #2c261a;
+  --ink-mute: #7a6f56;
+  --rule: #d3c6a8;
+  --rule-strong: #b8a983;
+  --color-accent-fg: #efe6d0;
+  --color-fg-soft: color-mix(in oklab, var(--ink) 55%, var(--paper));
+  --color-neutral-50: #efe6d0;
+  --color-neutral-100: #e7dcc2;
+  --color-neutral-200: #d3c6a8;
+  --color-neutral-500: #7a6f56;
+  --color-neutral-700: #574d38;
+  --color-neutral-900: #2c261a;
+}
+
+/* ── HIGH-CONTRAST — pure black/white, hard borders ─────────────────── */
+:root[data-theme='hc'] {
+  color-scheme: light;
+  --brand: #0a4a30;
+  --brand-soft: #d9efe4;
+  --paper: #ffffff;
+  --paper-2: #ffffff;
+  --ink: #000000;
+  --ink-mute: #26241d;
+  --rule: #000000;
+  --rule-strong: #000000;
+  --color-accent-fg: #ffffff;
+  --color-fg-soft: #26241d;
+  --color-neutral-50: #ffffff;
+  --color-neutral-100: #ffffff;
+  --color-neutral-200: #000000;
+  --color-neutral-500: #26241d;
+  --color-neutral-700: #000000;
+  --color-neutral-900: #000000;
+}
