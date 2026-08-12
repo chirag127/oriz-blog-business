@@ -1,17 +1,15 @@
 ---
 import SeriesSpine from '~/components/SeriesSpine.astro'
 /**
- * /  — oriz-blog homepage ("Signal Press" front page).
+ * /  — The Business Ledger front page.
  *
- * Above the fold: a real newspaper masthead — mono dateline (Vol. N · date ·
- * dispatch count), a big Source Serif 4 nameplate, the active-series spine
- * (`●─●─○─○`), and a colour-flagged LEAD STORY. Below: three hairline strata:
- *   1. IN PROGRESS — series spines
- *   2. RECENT      — last 7 posts, each with its vertical desk kicker
- *   3. BY CATEGORY — one typographic row, each desk in its vertical colour
- *
- * No cover images, no cards, no radius. Verticals (Dev/Finance/Culture/
- * Health/Personal) each carry their own marker colour (--v-*).
+ * ARCHETYPE: double-entry ledger. Above: a ledger header (folio dateline,
+ * thesis nameplate, sum-rule signature, one open-account spine). Below: a
+ * single ruled LEDGER TABLE — every post is a posted entry in columns
+ *   FOLIO | ENTRY (title + dek) | ACCOUNT | POSTED | FOLIOS
+ * with a <thead>, tabular-num dates, zebra ruled rows, and a per-account
+ * posting-mark tick. No cards, no radius, no cover images. The table IS the
+ * page. A short "open accounts" (in-progress series) strip sits above it.
  */
 import BaseLayout from '~/layouts/BaseLayout.astro'
 import {
@@ -22,21 +20,16 @@ import {
   postVertical,
   readingTimeFor,
   slugifyTag,
-  verticalFor,
   verticalLabel,
 } from '~/lib/blog'
 import { SITE_CONFIG } from '~/lib/config'
 
 const allPosts = await getPublishedPosts()
 const lead = allPosts[0]
-const recentPosts = allPosts.slice(1, 8)
+// full ledger table: lead + everything else, most-recent first
+const entries = allPosts
 
 const seriesAll = await getSeriesWithCounts()
-// In-progress: series where at least one post exists. We model "published"
-// as the count of currently-published parts. Total is exposed as a heuristic
-// (count + a small tail of "drafting" dots) — for v1 of the v2 design, we
-// just use count for total and count for published, and animate the last
-// dot as `current` so the spine has the signature glyph (`⦿`) visible.
 type InProgress = {
   name: string
   slug: string
@@ -44,7 +37,6 @@ type InProgress = {
   published: number
   current: number
   latest: Date
-  parts: Awaited<ReturnType<typeof getPostsInSeries>>
 }
 const inProgress: InProgress[] = []
 for (const { series, count } of seriesAll.slice(0, 4)) {
@@ -53,9 +45,6 @@ for (const { series, count } of seriesAll.slice(0, 4)) {
     (max, p) => (p.data.pubDate > max ? p.data.pubDate : max),
     parts[0].data.pubDate,
   )
-  // Total must never be less than what's already published (otherwise the
-  // label reads "part 29 of 12"). Use the larger of: published count, the
-  // largest explicit `part` field, or published+1 to hint one more coming.
   const explicitMax = parts.reduce((mx, p) => {
     const v = typeof p.data.part === 'number' ? p.data.part : Number(p.data.part)
     return Number.isFinite(v) ? Math.max(mx, v) : mx
@@ -66,16 +55,14 @@ for (const { series, count } of seriesAll.slice(0, 4)) {
     slug: slugifyTag(series),
     total,
     published: count,
-    current: count, // last filled dot is "current"
+    current: count,
     latest,
-    parts,
   })
 }
 inProgress.sort((a, b) => b.latest.valueOf() - a.latest.valueOf())
 
 const cats = await getCategoriesWithCounts()
 
-// Masthead dateline — "LEDGER · FY<year> · <N> entries" — accounting header.
 const now = new Date()
 const dateline = now.toLocaleDateString('en-GB', {
   weekday: 'long',
@@ -83,22 +70,10 @@ const dateline = now.toLocaleDateString('en-GB', {
   month: 'long',
   year: 'numeric',
 })
-const fy = now.getFullYear() // fiscal-year label for the ledger header
-const leadVertical = lead ? postVertical(lead) : 'personal'
-const leadRt = lead ? (lead.data.readingTime ?? readingTimeFor(lead)) : ''
+const fy = now.getFullYear()
 
-// "Days since" helper for the in-progress rail.
-function ago(date: Date): string {
-  const days = Math.floor((Date.now() - date.valueOf()) / 86_400_000)
-  if (days < 1) return 'today'
-  if (days === 1) return '1d ago'
-  if (days < 30) return `${days}d ago`
-  const months = Math.floor(days / 30)
-  if (months === 1) return '1mo ago'
-  if (months < 12) return `${months}mo ago`
-  const years = Math.floor(days / 365)
-  return years === 1 ? '1y ago' : `${years}y ago`
-}
+// folio number: newest entry = highest folio, counting down.
+const startFolio = entries.length
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -111,24 +86,23 @@ const jsonLd = {
 ---
 
 <BaseLayout
-  title="oriz / blog"
+  title="The Business Ledger"
   description={SITE_CONFIG.description}
   jsonLd={jsonLd}
-  hideSidebar
 >
-  <div class="container-page">
-    {/* Masthead — ledger header. Sum-rule signature closes the thesis. */}
+  <div class="ledger-page">
+    {/* ── Ledger header (masthead) ─────────────────────────────────── */}
     <section class="masthead" aria-label="Ledger header">
       <div class="dateline mono">
-        <span class="dateline-vol">Ledger</span>
+        <span class="dateline-vol">The Business Ledger</span>
         <span class="dateline-sep" aria-hidden="true">·</span>
         <span class="dateline-date">FY{fy} · {dateline}</span>
         <span class="dateline-sep" aria-hidden="true">·</span>
-        <span class="dateline-count"><span class="count">{allPosts.length}</span> entries posted</span>
+        <span class="dateline-count"><span class="count">{entries.length}</span> entries posted</span>
       </div>
-      <p class="nameplate">Build the business, not the deck.</p>
+      <h1 class="nameplate">Build the business, not the deck.</h1>
       <div class="sum-rule" aria-hidden="true"></div>
-      <p class="nameplate-sub">Field notes for founders and freelancers — validating ideas cheaply, pricing your work, and landing the first ten customers. Every entry earns its line.</p>
+      <p class="nameplate-sub">Field notes for founders and freelancers — validating ideas cheaply, pricing your work, and landing the first ten customers. Every entry earns its line in the book.</p>
       {inProgress[0] && (
         <p class="masthead-spine">
           <span class="masthead-spine-label mono">Open account</span>
@@ -143,49 +117,17 @@ const jsonLd = {
       )}
     </section>
 
-    {lead && (
-      <>
-        <hr class="rule-heavy" />
-        <section class="lead" data-vertical={leadVertical} aria-labelledby="lead-title">
-          <a class="lead-link" href={`/blog/${lead.id}`}>
-            <span class="lead-kicker mono">
-              <span class="lead-tick" aria-hidden="true"></span>
-              <span class="lead-desk">{verticalLabel(leadVertical)}</span>
-              <span class="lead-flag">Lead entry</span>
-            </span>
-            <h2 id="lead-title" class="lead-title">{lead.data.title}</h2>
-            <p class="lead-dek">{lead.data.description}</p>
-            <span class="lead-meta mono">
-              <time datetime={lead.data.pubDate.toISOString()}>{lead.data.pubDate.toISOString().slice(0, 10)}</time>
-              <span aria-hidden="true">·</span>
-              <span>{leadRt}</span>
-            </span>
-          </a>
-        </section>
-      </>
-    )}
-
-    <hr class="hairline" />
-
-    {/* Stratum 1 — IN PROGRESS. */}
+    {/* ── Open accounts (in-progress series) ───────────────────────── */}
     {inProgress.length > 0 && (
-      <section class="stratum stratum-progress" aria-labelledby="s-progress">
-        <h2 id="s-progress" class="stratum-h mono">Open accounts</h2>
-        <ul class="progress-list">
+      <section class="accounts" aria-labelledby="s-accounts">
+        <h2 id="s-accounts" class="section-h mono">Open accounts</h2>
+        <ul class="accounts-list">
           {inProgress.map((s) => (
-            <li class="progress-row">
-              <a class="progress-link" href={`/series/${s.slug}/`}>
-                <span class="progress-name">{s.name}</span>
-                <span class="progress-meta mono">part {s.published} of {s.total}</span>
-                <span class="progress-spine-mount">
-                  <SeriesSpine
-                    total={s.total}
-                    published={s.published}
-                    current={s.current}
-                    size="md"
-                  />
-                </span>
-                <span class="progress-ago mono">{ago(s.latest)}</span>
+            <li class="accounts-row">
+              <a class="accounts-link" href={`/series/${s.slug}/`}>
+                <span class="accounts-name">{s.name}</span>
+                <SeriesSpine total={s.total} published={s.published} current={s.current} size="sm" />
+                <span class="accounts-meta mono">part {s.published} / {s.total}</span>
               </a>
             </li>
           ))}
@@ -193,81 +135,94 @@ const jsonLd = {
       </section>
     )}
 
-    <hr class="hairline" />
-
-    {/* Stratum 2 — RECENT. */}
-    <section class="stratum stratum-recent" aria-labelledby="s-recent">
-      <h2 id="s-recent" class="stratum-h mono">Recent entries</h2>
-      <ul class="recent-list">
-        {recentPosts.map((p) => (
-          <li class="recent-row" data-vertical={postVertical(p)}>
-            <a class="recent-link" href={`/blog/${p.id}`}>
-              <time class="recent-date mono" datetime={p.data.pubDate.toISOString()}>
-                {p.data.pubDate.toISOString().slice(0, 10)}
-              </time>
-              <span class="recent-meat">
-                <span class="recent-kicker mono">
-                  <span class="recent-tick" aria-hidden="true"></span>{verticalLabel(postVertical(p))}
-                </span>
-                <span class="recent-title">{p.data.title}</span>
-                <span class="recent-dek">{p.data.description}</span>
-              </span>
-              <span class="recent-rt mono">{p.data.readingTime ?? readingTimeFor(p)}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-      <p class="all-link">
-        <a href="/archive/">view all {allPosts.length} entries in the ledger →</a>
+    {/* ── THE LEDGER TABLE ─────────────────────────────────────────── */}
+    <section class="ledger" aria-labelledby="s-ledger">
+      <h2 id="s-ledger" class="section-h mono">General ledger</h2>
+      <div class="ledger-scroll">
+        <table class="ledger-table">
+          <caption class="sr-only">All published entries, most recent first</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="col-folio mono">Folio</th>
+              <th scope="col" class="col-entry mono">Entry</th>
+              <th scope="col" class="col-account mono">Account</th>
+              <th scope="col" class="col-posted mono">Posted</th>
+              <th scope="col" class="col-folios mono">Length</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((p, i) => {
+              const v = postVertical(p)
+              const folio = (startFolio - i).toString().padStart(3, '0')
+              const rt = p.data.readingTime ?? readingTimeFor(p)
+              return (
+                <tr class="ledger-row" data-vertical={v} data-lead={i === 0 ? 'true' : undefined}>
+                  <td class="col-folio mono" data-label="Folio">{folio}</td>
+                  <td class="col-entry" data-label="Entry">
+                    <a class="entry-link" href={`/blog/${p.id}`}>
+                      <span class="entry-title">{p.data.title}{i === 0 && <span class="entry-flag mono">latest</span>}</span>
+                      <span class="entry-dek">{p.data.description}</span>
+                    </a>
+                  </td>
+                  <td class="col-account" data-label="Account">
+                    <span class="account-mark" aria-hidden="true"></span>
+                    <span class="account-name mono">{verticalLabel(v)}</span>
+                  </td>
+                  <td class="col-posted mono" data-label="Posted">
+                    <time datetime={p.data.pubDate.toISOString()}>{p.data.pubDate.toISOString().slice(0, 10)}</time>
+                  </td>
+                  <td class="col-folios mono" data-label="Length">{rt}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p class="ledger-foot-row mono">
+        <span class="lfr-rule" aria-hidden="true"></span>
+        <a href="/archive/">Full archive · {entries.length} entries →</a>
       </p>
     </section>
 
-    <hr class="hairline" />
-
-    {/* Stratum 3 — BY CATEGORY (single typographic row). */}
+    {/* ── Chart of accounts (categories, one ruled row) ────────────── */}
     {cats.length > 0 && (
-      <section class="stratum stratum-cats" aria-labelledby="s-cats">
-        <h2 id="s-cats" class="stratum-h mono">Accounts</h2>
-        <p class="cats-row">
-          {cats.map((c, i) => (
-            <>
-              {i > 0 && <span class="cats-dot" aria-hidden="true">·</span>}
-              <a href={`/categories/${slugifyTag(c.category)}/`} class="cats-link" data-vertical={verticalFor(c.category)}>
-                <span class="cats-name">{c.category}</span>
-                <span class="cats-count mono">({c.count})</span>
+      <section class="chart" aria-labelledby="s-chart">
+        <h2 id="s-chart" class="section-h mono">Chart of accounts</h2>
+        <ul class="chart-list">
+          {cats.map((c) => (
+            <li class="chart-row">
+              <a href={`/categories/${slugifyTag(c.category)}/`} class="chart-link">
+                <span class="chart-name">{c.category}</span>
+                <span class="chart-dots" aria-hidden="true"></span>
+                <span class="chart-count mono">{c.count}</span>
               </a>
-            </>
+            </li>
           ))}
-        </p>
+        </ul>
       </section>
     )}
   </div>
 </BaseLayout>
 
 <style>
-  .container-page {
-    max-width: 920px;
+  .ledger-page {
+    max-width: 1080px;
     margin-inline: auto;
-    padding-inline: clamp(1.25rem, 4vw, 2rem);
+    padding-inline: clamp(1rem, 4vw, 2rem);
   }
 
-  /* ── Masthead (front page) ─────────────────────────────────────────── */
-
-  .masthead {
-    padding-block: clamp(1.75rem, 5vw, 3rem) 1.5rem;
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
   }
+
+  /* ── Masthead ─────────────────────────────────────────────────────── */
+  .masthead { padding-block: clamp(1.75rem, 5vw, 3rem) 1.25rem; }
   .dateline {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
     color: var(--ink-mute);
-    padding-bottom: 0.875rem;
-    border-bottom: 1px solid var(--rule);
-    margin-bottom: 1.5rem;
+    padding-bottom: 0.875rem; border-bottom: 1px solid var(--rule); margin-bottom: 1.5rem;
   }
   .dateline-vol { color: var(--accent); font-weight: 500; }
   .dateline-sep { color: var(--rule-strong, var(--rule)); }
@@ -276,325 +231,182 @@ const jsonLd = {
     font-family: var(--font-display);
     font-optical-sizing: auto;
     font-size: clamp(2.5rem, 8vw, 4.75rem);
-    font-weight: 600;
-    letter-spacing: -0.025em;
-    line-height: 0.98;
-    color: var(--ink);
-    margin: 0;
-    max-width: 15ch;
+    font-weight: 600; letter-spacing: -0.025em; line-height: 0.98;
+    color: var(--ink); margin: 0; max-width: 15ch;
   }
-  /* SIGNATURE — the ledger sum-rule: thin rule + gap + thick rule, the
-     accounting "total" line drawn under the thesis. */
+  /* SIGNATURE — ledger sum-rule: ink line + accent underscore ("total"). */
   .sum-rule {
-    margin: 1.1rem 0 0;
-    max-width: 15ch;
-    border-top: 1px solid var(--ink);
-    height: 4px;
+    margin: 1.1rem 0 0; max-width: 15ch;
+    border-top: 1px solid var(--ink); height: 4px;
     box-shadow: 0 3px 0 -1px var(--accent);
   }
   .nameplate-sub {
     font-family: var(--font-body);
-    font-size: clamp(1.0625rem, 2vw, 1.25rem);
-    line-height: 1.5;
-    color: var(--ink-mute);
-    margin: 1.25rem 0 0;
-    max-width: 54ch;
+    font-size: clamp(1.0625rem, 2vw, 1.25rem); line-height: 1.5;
+    color: var(--ink-mute); margin: 1.25rem 0 0; max-width: 54ch;
   }
   .masthead-spine {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.625rem;
-    margin: 1.5rem 0 0;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.625rem; margin: 1.5rem 0 0;
   }
   .masthead-spine-label {
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--ink-mute);
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-mute);
   }
   .masthead-spine-name {
-    font-family: var(--font-display);
-    font-size: 1rem;
-    font-weight: 500;
-    color: var(--ink);
-    text-decoration: none;
-    border-bottom: 1px solid var(--rule);
+    font-family: var(--font-display); font-size: 1rem; font-weight: 500; color: var(--ink);
+    text-decoration: none; border-bottom: 1px solid var(--rule);
   }
   .masthead-spine-name:hover { color: var(--accent); border-bottom-color: var(--accent); }
 
-  .rule-heavy {
-    height: 3px;
-    background: var(--ink);
-    border: 0;
-    margin: 0;
+  /* ── Section heading ──────────────────────────────────────────────── */
+  .section-h {
+    font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.18em; color: var(--ink-mute); font-weight: 500; margin: 0 0 0.75rem;
   }
 
-  /* ── Lead story ────────────────────────────────────────────────────── */
+  /* ── Open accounts ────────────────────────────────────────────────── */
+  .accounts { padding-block: 1.5rem 0.5rem; }
+  .accounts-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+  .accounts-row { border-top: 1px solid color-mix(in oklab, var(--rule) 70%, transparent); }
+  .accounts-row:last-child { border-bottom: 1px solid color-mix(in oklab, var(--rule) 70%, transparent); }
+  .accounts-link {
+    display: flex; align-items: center; gap: 0.875rem; flex-wrap: wrap;
+    padding-block: 0.625rem; color: var(--ink); text-decoration: none;
+  }
+  .accounts-link:hover { color: var(--accent); }
+  .accounts-name { font-family: var(--font-display); font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
+  .accounts-meta { font-size: 11px; letter-spacing: 0.06em; color: var(--ink-mute); font-variant-numeric: tabular-nums; margin-left: auto; }
+  .accounts-link:hover .accounts-meta { color: var(--accent); }
 
-  .lead {
-    --v: var(--v-personal);
-    padding-block: 1.75rem 0.5rem;
+  /* ── The ledger table ─────────────────────────────────────────────── */
+  .ledger { padding-block: 1.75rem 0.5rem; }
+  .ledger-scroll { overflow-x: auto; }
+  .ledger-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    /* the ruled book: heavy top + bottom, hairline between rows */
+    border-top: 3px solid var(--ink);
   }
-  .lead[data-vertical='dev'] { --v: var(--v-dev); }
-  .lead[data-vertical='finance'] { --v: var(--v-finance); }
-  .lead[data-vertical='culture'] { --v: var(--v-culture); }
-  .lead[data-vertical='health'] { --v: var(--v-health); }
-  .lead-link { display: grid; gap: 0.625rem; color: var(--ink); text-decoration: none; }
-  .lead-kicker {
-    display: inline-flex; align-items: center; gap: 0.5rem;
-    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-mute);
-  }
-  .lead-tick { width: 8px; height: 8px; background: var(--v); flex: 0 0 auto; }
-  .lead-desk { color: var(--v); font-weight: 500; }
-  .lead-flag { border-left: 1px solid var(--rule); padding-left: 0.5rem; color: var(--accent); }
-  .lead-title {
-    font-family: var(--font-display);
-    font-size: clamp(1.875rem, 4.5vw, 2.75rem);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.08;
-    margin: 0;
-    max-width: 20ch;
-  }
-  .lead-link:hover .lead-title { color: var(--accent); }
-  .lead-dek {
-    font-family: var(--font-display);
-    font-size: 1.125rem;
-    line-height: 1.5;
-    color: var(--ink-mute);
-    margin: 0;
-    max-width: 58ch;
-  }
-  .lead-meta { display: inline-flex; gap: 0.5rem; font-size: 11px; letter-spacing: 0.06em; color: var(--ink-mute); }
-
-  /* ── Strata ────────────────────────────────────────────────────────── */
-
-  .stratum { padding-block: 1.75rem 1.75rem; }
-  .stratum-h {
+  .ledger-table thead th {
+    text-align: left;
     font-family: var(--font-mono);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: var(--ink-mute);
-    font-weight: 500;
-    margin: 0 0 1.25rem;
-  }
-
-  /* ── In progress ──────────────────────────────────────────────────── */
-
-  .progress-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.625rem;
-  }
-  .progress-row { padding: 0; }
-  .progress-link {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
-    gap: 1rem;
-    align-items: baseline;
-    color: var(--ink);
-    text-decoration: none;
-    padding-block: 0.5rem;
-  }
-  .progress-link:hover { color: var(--accent); }
-  .progress-link:hover .progress-meta,
-  .progress-link:hover .progress-ago { color: var(--accent); }
-  .progress-name {
-    font-family: var(--font-display);
-    font-size: 1.0625rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    color: var(--ink);
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+    font-weight: 500; color: var(--ink-mute);
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--ink);
     white-space: nowrap;
+    background: var(--paper-2);
   }
-  .progress-meta, .progress-ago {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    color: var(--ink-mute);
-  }
-  .progress-spine-mount { display: inline-flex; }
+  .col-folio { width: 62px; }
+  .col-account { width: 168px; }
+  .col-posted { width: 118px; }
+  .col-folios { width: 74px; text-align: right; }
+  .ledger-table thead .col-folios { text-align: right; }
 
-  @media (max-width: 640px) {
-    .progress-link {
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas:
-        'name      ago'
-        'meta      meta'
-        'spine     spine';
-      row-gap: 0.25rem;
-    }
-    .progress-name { grid-area: name; }
-    .progress-meta { grid-area: meta; }
-    .progress-spine-mount { grid-area: spine; }
-    .progress-ago { grid-area: ago; text-align: right; }
-  }
-
-  /* ── Recent ───────────────────────────────────────────────────────── */
-
-  .recent-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  .recent-row {
+  .ledger-row {
     --v: var(--v-personal);
-    border-bottom: 1px solid color-mix(in oklab, var(--rule) 70%, transparent);
+    border-bottom: 1px solid color-mix(in oklab, var(--rule) 75%, transparent);
+    transition: background var(--dur-fast, 120ms) ease;
   }
-  .recent-row[data-vertical='dev'] { --v: var(--v-dev); }
-  .recent-row[data-vertical='finance'] { --v: var(--v-finance); }
-  .recent-row[data-vertical='culture'] { --v: var(--v-culture); }
-  .recent-row[data-vertical='health'] { --v: var(--v-health); }
-  .recent-row:last-child { border-bottom: 0; }
-  .recent-link {
-    display: grid;
-    grid-template-columns: 108px minmax(0, 1fr) 84px;
-    gap: 1.25rem;
-    align-items: baseline;
-    color: var(--ink);
-    text-decoration: none;
-    padding-block: 0.875rem;
-    padding-left: 0.75rem;
-    margin-left: -0.75rem;
-    border-left: 2px solid transparent;
-    transition: border-color var(--dur-fast, 120ms) ease;
-  }
-  .recent-link:hover { border-left-color: var(--v); }
-  .recent-link:hover .recent-title { color: var(--accent); }
-  .recent-link:hover .recent-date,
-  .recent-link:hover .recent-rt { color: var(--accent); }
+  .ledger-row[data-vertical='dev'] { --v: var(--v-dev); }
+  .ledger-row[data-vertical='finance'] { --v: var(--v-finance); }
+  .ledger-row[data-vertical='culture'] { --v: var(--v-culture); }
+  .ledger-row[data-vertical='health'] { --v: var(--v-health); }
+  /* zebra ruling — alternate manila tint */
+  .ledger-row:nth-child(even) { background: color-mix(in oklab, var(--paper-2) 45%, transparent); }
+  .ledger-row:hover { background: color-mix(in oklab, var(--accent) 7%, transparent); }
+  .ledger-row[data-lead='true'] { background: color-mix(in oklab, var(--accent) 5%, transparent); }
 
-  .recent-kicker {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--v);
-    font-weight: 500;
-  }
-  .recent-tick { width: 6px; height: 6px; background: var(--v); flex: 0 0 auto; }
+  .ledger-table td { padding: 0.75rem; vertical-align: baseline; }
 
-  .recent-date {
-    color: var(--ink-mute);
-    font-family: var(--font-mono);
-    font-size: 12px;
+  .col-folio {
+    color: var(--ink-mute); font-size: 12px; font-variant-numeric: tabular-nums;
     letter-spacing: 0.04em;
-    position: relative;
-    padding-left: 0.875rem;
+    border-right: 1px solid color-mix(in oklab, var(--rule) 60%, transparent);
   }
-  /* dateline gutter: posting-mark tick (vertical colour) on the entry date */
-  .recent-date::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0.12em;
-    width: 3px;
-    height: 0.7em;
-    background: var(--v);
-  }
-  .recent-meat {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-    min-width: 0;
-  }
-  .recent-title {
-    font-family: var(--font-display);
-    font-size: 1.125rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    color: var(--ink);
-    line-height: 1.3;
-  }
-  .recent-dek {
-    font-family: var(--font-body);
-    font-size: 14.5px;
-    color: var(--ink-mute);
-    line-height: 1.5;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    overflow: hidden;
-  }
-  .recent-rt {
-    color: var(--ink-mute);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    padding-left: 0.75rem;
-    border-left: 1px solid var(--rule);
+  /* posting-mark tick in the folio gutter, per account colour */
+  .ledger-row td.col-folio { position: relative; }
+  .ledger-row td.col-folio::before {
+    content: ''; position: absolute; left: 0; top: 0.9rem;
+    width: 3px; height: 0.9em; background: var(--v);
   }
 
-  @media (max-width: 640px) {
-    .recent-link {
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas:
-        'date   rt'
-        'meat   meat';
-      row-gap: 0.25rem;
+  .entry-link { display: grid; gap: 0.15rem; color: var(--ink); text-decoration: none; }
+  .entry-title {
+    font-family: var(--font-display); font-size: 1.0625rem; font-weight: 600;
+    letter-spacing: -0.01em; line-height: 1.25;
+    display: inline-flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;
+  }
+  .entry-flag {
+    font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); border: 1px solid color-mix(in oklab, var(--accent) 45%, transparent);
+    padding: 1px 5px; transform: translateY(-1px);
+  }
+  .entry-link:hover .entry-title { color: var(--accent); }
+  .entry-dek {
+    font-family: var(--font-body); font-size: 13.5px; color: var(--ink-mute); line-height: 1.45;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden;
+  }
+
+  .col-account { color: var(--v); }
+  .account-mark { display: inline-block; width: 7px; height: 7px; background: var(--v); margin-right: 0.4rem; transform: translateY(-1px); }
+  .account-name { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--v); font-weight: 500; }
+
+  .col-posted { color: var(--ink-mute); font-size: 12px; letter-spacing: 0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .col-folios { color: var(--ink-mute); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .ledger-foot-row {
+    display: flex; align-items: center; gap: 1rem; margin: 1rem 0 0; font-size: 12px;
+  }
+  .lfr-rule { flex: 1; height: 0; border-top: 1px solid var(--ink); }
+  .ledger-foot-row a {
+    color: var(--ink-mute); letter-spacing: 0.06em; text-transform: uppercase;
+    text-decoration: none; white-space: nowrap;
+  }
+  .ledger-foot-row a:hover { color: var(--accent); }
+
+  /* ── Chart of accounts ────────────────────────────────────────────── */
+  .chart { padding-block: 2rem 1rem; }
+  .chart-list { list-style: none; padding: 0; margin: 0; }
+  .chart-row { border-bottom: 1px solid color-mix(in oklab, var(--rule) 65%, transparent); }
+  .chart-row:first-child { border-top: 1px solid color-mix(in oklab, var(--rule) 65%, transparent); }
+  .chart-link {
+    display: flex; align-items: baseline; gap: 0.5rem; padding-block: 0.55rem;
+    color: var(--ink); text-decoration: none;
+  }
+  .chart-name { font-family: var(--font-display); font-size: 1rem; font-weight: 500; letter-spacing: -0.01em; }
+  .chart-link:hover .chart-name { color: var(--accent); }
+  .chart-dots { flex: 1; border-bottom: 1px dotted var(--rule-strong, var(--rule)); transform: translateY(-3px); }
+  .chart-count { font-size: 12px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
+
+  /* ── Mobile: table → stacked posting slips ────────────────────────── */
+  @media (max-width: 719px) {
+    .ledger-table, .ledger-table tbody, .ledger-table tr, .ledger-table td { display: block; width: 100%; }
+    .ledger-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .ledger-scroll { overflow-x: visible; }
+    .ledger-table { border-top: 3px solid var(--ink); }
+    .ledger-row {
+      padding: 0.875rem 0.75rem 0.875rem 1.25rem;
+      position: relative;
+      border-bottom: 1px solid var(--rule);
     }
-    .recent-date { grid-area: date; }
-    .recent-rt { grid-area: rt; text-align: right; border-left: 0; padding-left: 0; }
-    .recent-meat { grid-area: meat; }
+    .ledger-row::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--v);
+    }
+    .ledger-table td { padding: 0.1rem 0; border: 0 !important; }
+    .ledger-table td.col-folio::before { display: none; }
+    .col-folio { display: inline-block; width: auto; margin-right: 0.6rem; }
+    .col-folio::after { content: ' ·'; color: var(--rule-strong, var(--rule)); }
+    .col-account { display: inline-block; }
+    /* row meta line: folio + account inline, then title, dek, posted+length */
+    .col-posted, .col-folios {
+      display: inline-block; width: auto; text-align: left;
+    }
+    .col-folios::before { content: ' · '; color: var(--rule-strong, var(--rule)); }
+    .entry-dek { -webkit-line-clamp: 2; line-clamp: 2; }
   }
 
-  .all-link {
-    margin: 1.25rem 0 0;
-    font-family: var(--font-sans);
-    font-size: 13.6px;
+  @media (prefers-reduced-motion: reduce) {
+    .ledger-row { transition: none; }
   }
-  .all-link a {
-    color: var(--ink-mute);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    text-decoration-color: var(--rule);
-  }
-  .all-link a:hover { color: var(--accent); text-decoration-color: var(--accent); }
-
-  /* ── By category (one row) ────────────────────────────────────────── */
-
-  .cats-row {
-    margin: 0;
-    line-height: 2;
-    color: var(--ink);
-  }
-  .cats-link {
-    --v: var(--v-personal);
-    color: var(--ink);
-    text-decoration: none;
-    margin-inline: 0.125rem;
-  }
-  .cats-link[data-vertical='dev'] { --v: var(--v-dev); }
-  .cats-link[data-vertical='finance'] { --v: var(--v-finance); }
-  .cats-link[data-vertical='culture'] { --v: var(--v-culture); }
-  .cats-link[data-vertical='health'] { --v: var(--v-health); }
-  .cats-link:hover .cats-name { color: var(--v); }
-  .cats-name {
-    font-family: var(--font-display);
-    font-size: 17px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-  }
-  .cats-count {
-    color: var(--ink-mute);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    margin-left: 0.25rem;
-  }
-  .cats-dot { color: var(--rule); margin-inline: 0.625rem; }
 </style>

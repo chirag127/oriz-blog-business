@@ -1,0 +1,146 @@
+---
+/*
+ * LedgerTabs — slim ledger index-tab bar. Replaces the shared
+ * FamilyChrome double-header + 64px magazine masthead + left Sidebar.
+ *
+ *   ┌ book of business ───────────── entries · ledgers · accounts · colophon ─ bal ┐
+ *
+ * A single slim strip: the book title (wordmark z-strike kept) on the left,
+ * ledger "index tabs" as the primary nav, a running balance stat + search on
+ * the right. Tabs read like the labelled thumb-cuts of a bound ledger, not a
+ * centered magazine nav. Sticky, one hairline + one accent baseline rule.
+ */
+import HeaderControls from '~/components/HeaderControls.tsx'
+import MultiSearch from '~/components/MultiSearch.tsx'
+import StatusBanner from '~/components/StatusBanner.astro'
+import Wordmark from '~/components/Wordmark.astro'
+
+interface Props {
+  entries?: number
+}
+const { entries } = Astro.props
+const path = Astro.url.pathname
+const tabs = [
+  { label: 'Entries', href: '/', match: (p: string) => p === '/' },
+  { label: 'Ledgers', href: '/series/', match: (p: string) => p.startsWith('/series') },
+  { label: 'Accounts', href: '/tags/', match: (p: string) => p.startsWith('/tags') || p.startsWith('/categories') },
+  { label: 'Colophon', href: '/about/', match: (p: string) => p.startsWith('/about') },
+]
+---
+
+<StatusBanner />
+<header class="ledger-tabs" transition:persist="ledger-tabs">
+  <div class="lt-inner">
+    <a class="lt-book" href="/" aria-label="Book of business — home">
+      <Wordmark subtitle="ledger" size={19} href={null} />
+    </a>
+
+    <nav class="lt-tabs" aria-label="Primary">
+      {tabs.map((t) => {
+        const active = t.match(path)
+        return (
+          <a href={t.href} class="lt-tab" aria-current={active ? 'page' : undefined}>
+            <span class="lt-tab-txt">{t.label}</span>
+          </a>
+        )
+      })}
+    </nav>
+
+    <div class="lt-right">
+      {typeof entries === 'number' && (
+        <span class="lt-balance mono" aria-label={`${entries} entries posted`}>
+          <span class="lt-balance-k">bal</span>
+          <span class="lt-balance-v">{entries.toString().padStart(3, '0')}</span>
+        </span>
+      )}
+      <div class="lt-search"><MultiSearch client:idle /></div>
+      <div class="lt-controls"><HeaderControls client:idle /></div>
+    </div>
+  </div>
+  <div class="lt-baseline" aria-hidden="true"></div>
+</header>
+
+<style>
+  .ledger-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: color-mix(in oklab, var(--paper) 92%, transparent);
+    backdrop-filter: saturate(160%) blur(10px);
+    -webkit-backdrop-filter: saturate(160%) blur(10px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .lt-inner {
+    max-width: 1080px;
+    margin-inline: auto;
+    padding-inline: clamp(1rem, 4vw, 2rem);
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+  .lt-book { flex: 0 0 auto; display: inline-flex; align-items: center; color: inherit; text-decoration: none; }
+
+  /* index tabs — thumb-cut style: box with a top-notch that fills on active */
+  .lt-tabs {
+    display: none;
+    align-items: stretch;
+    gap: 0;
+    height: 100%;
+    margin-left: 0.5rem;
+  }
+  .lt-tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    text-decoration: none;
+    border-left: 1px solid var(--rule);
+    transition: color var(--dur-fast, 120ms) ease, background var(--dur-fast, 120ms) ease;
+  }
+  .lt-tab:last-child { border-right: 1px solid var(--rule); }
+  .lt-tab::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    height: 3px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--dur-fast, 120ms) ease;
+  }
+  .lt-tab:hover { color: var(--ink); background: color-mix(in oklab, var(--accent) 7%, transparent); }
+  .lt-tab:hover::before,
+  .lt-tab[aria-current='page']::before { transform: scaleX(1); }
+  .lt-tab[aria-current='page'] { color: var(--accent); background: color-mix(in oklab, var(--accent) 9%, transparent); }
+  .lt-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .lt-right { margin-left: auto; display: inline-flex; align-items: center; gap: 0.75rem; }
+  .lt-balance {
+    display: none;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    padding-right: 0.75rem;
+    border-right: 1px solid var(--rule);
+    font-variant-numeric: tabular-nums;
+  }
+  .lt-balance-v { color: var(--accent); font-weight: 600; font-size: 13px; letter-spacing: 0.04em; }
+  .lt-search, .lt-controls { display: inline-flex; align-items: center; }
+
+  /* accent baseline rule under the whole strip — the "ruled" ledger edge */
+  .lt-baseline { height: 2px; background: color-mix(in oklab, var(--accent) 55%, transparent); }
+
+  @media (min-width: 768px) {
+    .lt-tabs { display: inline-flex; }
+    .lt-balance { display: inline-flex; }
+  }
+</style>
